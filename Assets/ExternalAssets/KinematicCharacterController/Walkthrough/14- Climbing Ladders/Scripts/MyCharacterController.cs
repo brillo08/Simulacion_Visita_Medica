@@ -82,6 +82,8 @@ namespace KinematicCharacterController.Walkthrough.ClimbingLadders
         private Vector3 _internalVelocityAdd = Vector3.zero;
         private bool _shouldBeCrouching = false;
         private bool _isCrouching = false;
+        private bool _canMove = true;
+        public bool CanMove => _canMove;
 
         // Ladder vars
         private float _ladderUpDownInput;
@@ -154,6 +156,12 @@ namespace KinematicCharacterController.Walkthrough.ClimbingLadders
                         break;
                     }
             }
+        }
+
+        public void ToggleMovement(bool state)
+        {
+            _canMove = state;
+            Debug.Log(_canMove);
         }
 
         /// <summary>
@@ -316,6 +324,12 @@ namespace KinematicCharacterController.Walkthrough.ClimbingLadders
         /// </summary>
         public void UpdateVelocity(ref Vector3 currentVelocity, float deltaTime)
         {
+            if (!_canMove)
+            {
+                currentVelocity = Vector3.zero;
+                return;
+            }
+
             switch (CurrentCharacterState)
             {
                 case CharacterState.Default:

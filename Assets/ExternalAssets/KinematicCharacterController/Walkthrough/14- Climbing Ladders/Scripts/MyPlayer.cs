@@ -19,6 +19,9 @@ namespace KinematicCharacterController.Walkthrough.ClimbingLadders
         private const string HorizontalInput = "Horizontal";
         private const string VerticalInput = "Vertical";
 
+        private bool _canLook = true;
+        public bool CanLook => _canLook;
+
         private void Start()
         {
             // Tell camera to follow transform
@@ -34,9 +37,15 @@ namespace KinematicCharacterController.Walkthrough.ClimbingLadders
             HandleCharacterInput();
         }
 
+        public void ToggleView(bool state)
+        {
+            _canLook = state;
+        }
+
         private void LateUpdate()
         {
-            HandleCameraInput();
+            if (_canLook)
+                HandleCameraInput();
         }
 
         private void HandleCameraInput()
@@ -46,14 +55,8 @@ namespace KinematicCharacterController.Walkthrough.ClimbingLadders
             float mouseLookAxisRight = Input.GetAxisRaw(MouseXInput);
             Vector3 lookInputVector = new Vector3(mouseLookAxisRight, mouseLookAxisUp, 0f);
 
-            // Input for zooming the camera (disabled in WebGL because it can cause problems)
-            float scrollInput = -Input.GetAxis(MouseScrollInput);
-#if UNITY_WEBGL
-        scrollInput = 0f;
-#endif
-
             // Apply inputs to the camera
-            OrbitCamera.UpdateWithInput(Time.deltaTime, scrollInput, lookInputVector);
+            OrbitCamera.UpdateWithInput(Time.deltaTime, 0f, lookInputVector);
 
             // Handle toggling zoom level
             if (Input.GetMouseButtonDown(1))

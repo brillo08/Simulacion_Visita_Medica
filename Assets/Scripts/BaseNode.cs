@@ -4,10 +4,22 @@ using System.Collections.Generic;
 using UnityEngine;
 using XNode;
 
-public class BaseNode : Node 
+public class BaseNode : Node
 {
-	public virtual string GetString () {
+	[Output(dynamicPortList = true)] public DialogueOption[] dialogueLine;
+
+	public virtual string GetString()
+	{
 		return null;
 	}
 
+	public DialogueOption[] GetOptions()
+	{
+		var ret = new DialogueOption[dialogueLine.Length];
+
+		for (var i = 0; i < ret.Length; i++)
+			ret[i] = dialogueLine[i];
+
+		return ret;
+	}
 }

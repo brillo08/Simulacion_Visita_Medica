@@ -1,20 +1,29 @@
 using System;
 using System.Collections.Generic;
+using KinematicCharacterController.Walkthrough.ClimbingLadders;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using System.Collections;
+using XNodeEditor;
 
 [Serializable]
 public struct DialogueCollection
 {
     public string dialogueID;
     public DialogueGraph dialogue;
+    public UnityEvent OnDialogueStarted;
+    public UnityEvent OnDialogueEnded;
 }
 
 public class DialogueManager : MonoBehaviour
 {
+    [SerializeField] private MyCharacterController player;
+    //[SerializeField] private MyPlayer cameraWrapper;*/
     [SerializeField] private GameObject generalCanvas;
+    [SerializeField] private GameObject interactionHint;
     [SerializeField] private OptionButtonContainer optionPrefab;
     [SerializeField] private Transform optionOrigin;
     [SerializeField] private TMP_Text speakerTitle;
@@ -23,12 +32,14 @@ public class DialogueManager : MonoBehaviour
     public DialogueCollection[] _dialogues;
     private string currentActiveDialogue;
 
+    private int randomDecision;
+
     private Dictionary<string, DialogueCollection> dialogues = new();
 
-    private DialogueNode currentNode;
+    private BaseNode currentNode;
     private List<OptionButtonContainer> createdOptionsContainers = new();
 
-    void Start() 
+    void Start()
     {
         foreach (var d in _dialogues)
             dialogues.Add(d.dialogueID, d);
@@ -43,18 +54,41 @@ public class DialogueManager : MonoBehaviour
             ActivateDialogue();
     }
 
+    public void DoSpecial(float explicitValue = -1)
+    {
+        var waitValue = explicitValue == -1 ? ((SpecialNode)currentNode).waitTime : explicitValue;
+
+        StartCoroutine(SpecialRoutine(waitValue));
+    }
+
+    private IEnumerator SpecialRoutine(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        NextNode(0);
+    }
+
     public void ShowDialogue()
     {
-        speakerTitle.text = currentNode.GetTitle();
-        speakerDialogue.text = currentNode.GetDialogue();
+        interactionHint.SetActive(false);
+        /*player.ToggleMovement(false);
+        cameraWrapper.ToggleView(false);*/
 
-        foreach (var o in currentNode.GetOptions())
+        speakerTitle.text = ((DialogueNode)currentNode).GetTitle();
+        speakerDialogue.text = ((DialogueNode)currentNode).GetDialogue();
+
+        if (((DialogueNode)currentNode).waitTime <= 0f)
         {
-            var b = Instantiate(optionPrefab, optionOrigin).GetComponent<OptionButtonContainer>();
-            createdOptionsContainers.Add(b);
-            b.SetText(o.optionDialogue);
-            b.GetComponent<Button>().onClick.AddListener( () => { NextNode(o.optionID); } );
+            foreach (var o in ((DialogueNode)currentNode).GetOptions())
+            {
+                var b = Instantiate(optionPrefab, optionOrigin).GetComponent<OptionButtonContainer>();
+                createdOptionsContainers.Add(b);
+                b.SetText(o.optionDialogue);
+                b.GetComponent<Button>().onClick.AddListener(() => { NextNode(o.optionID); });
+            }
         }
+
+        else
+            DoSpecial();
     }
 
     public void DeleteOptions()
@@ -68,7 +102,10 @@ public class DialogueManager : MonoBehaviour
     public void HideDialogue()
     {
         speakerTitle.text = "";
+        interactionHint.SetActive(false);
         speakerDialogue.text = "";
+        dialogues[currentActiveDialogue].OnDialogueEnded?.Invoke();
+        //Debug.Log(player.CanMove);
 
         DeleteOptions();
     }
@@ -77,7 +114,9 @@ public class DialogueManager : MonoBehaviour
     {
         if (currentActiveDialogue == "") return;
 
+        dialogues[currentActiveDialogue].OnDialogueStarted?.Invoke();
         ShowDialogue();
+        player.ToggleMovement(false);
         generalCanvas.gameObject.SetActive(true);
     }
 
@@ -87,17 +126,24 @@ public class DialogueManager : MonoBehaviour
         {
             currentActiveDialogue = d.dialogueID;
             currentNode = d.dialogue.nodes[0] as DialogueNode;
+            interactionHint.SetActive(true);
         }
     }
 
     public void DisableDialogue()
     {
         generalCanvas.gameObject.SetActive(false);
+        player.ToggleMovement(true);
+        dialogues[currentActiveDialogue].OnDialogueEnded?.Invoke();
+        //player.ToggleMovement(true);
+        /*cameraWrapper.ToggleView(true);
+        Debug.Log(player.CanMove);*/
     }
 
     public void DeselectDialogue()
     {
         currentActiveDialogue = "";
+        interactionHint.SetActive(false);
         currentNode = null;
     }
 
@@ -115,8 +161,33 @@ public class DialogueManager : MonoBehaviour
             {
                 if (option.optionID == optionID)
                 {
-                    currentNode = currentNode.GetOutputPort($"dialogueLine {optionID}").
-                    Connection.node as DialogueNode;
+                    if (option.dialogueEnding)
+                    {
+                        DisableDialogue();
+                        DeselectDialogue();
+                        break;
+                    }
+
+                    var exitNode = currentNode.GetOutputPort($"dialogueLine {optionID}").Connection.node;
+
+                    switch (exitNode)
+                    {
+                        case DialogueNode:
+
+                            currentNode = exitNode as DialogueNode;
+                            ShowDialogue();
+
+                            break;
+
+                        case SpecialNode:
+
+                            Debug.Log("going to special");
+
+                            currentNode = exitNode as SpecialNode;
+                            DoSpecial();
+
+                            break;
+                    }
 
                     break;
                 }
@@ -124,7 +195,5 @@ public class DialogueManager : MonoBehaviour
 
             break;
         }
-
-        ShowDialogue();
     }
 }

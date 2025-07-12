@@ -4,12 +4,14 @@ using UnityEngine;
 using System;
 using XNode;
 
-public class DialogueNode : BaseNode {
+public class DialogueNode : BaseNode
+{
 	[Input] public int entry;
 	//[Output] public int exit;
 	public string speakerName;
 	public string speakerDialogue;
-	[Output(dynamicPortList = true)]public DialogueOption[] dialogueLine;
+	public float waitTime;
+	
 
 	public string GetTitle()
 	{
@@ -20,22 +22,12 @@ public class DialogueNode : BaseNode {
 	{
 		return speakerDialogue;
 	}
-
-	public DialogueOption[] GetOptions()
-	{
-		var ret = new DialogueOption[dialogueLine.Length];
-
-		for (var i = 0; i < ret.Length; i++)
-			ret[i] = dialogueLine[i];
-
-		return ret;
-	}
-	
 }
 
 [Serializable]
 public class DialogueOption
 {
-    public int optionID;
-    public string optionDialogue;
+	public int optionID;
+	public string optionDialogue;
+	public bool dialogueEnding;
 }

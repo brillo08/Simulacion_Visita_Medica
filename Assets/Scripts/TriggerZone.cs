@@ -11,8 +11,6 @@ public class TriggerZone : MonoBehaviour
     
     private void OnTriggerEnter(Collider o)
     {
-        Debug.Log(o.gameObject.name);
-
         if (triggeredBy.ToList().Contains(o.tag))
             OnEnterEvent?.Invoke();
     }
